@@ -1,11 +1,23 @@
 import { WebSocket, WebSocketServer } from 'ws';
 import http from 'http';
+import { isFunctionTypeNode } from 'typescript';
+import { json } from 'stream/consumers';
 const server = http.createServer();
 const wss = new WebSocketServer({ server });
 let Rooms = new Map();
 let socketIds = new Map(); // unique id for each socket
 function generateId() {
     return Math.random().toString(36).substring(2, 10);
+}
+function deleteRoom(ws) {
+    Rooms.forEach((clients, RoomId) => {
+        if (clients.has(ws)) {
+            clients.delete(ws);
+        }
+        if (clients.size === 0) {
+            Rooms.delete(RoomId);
+        }
+    });
 }
 wss.on('connection', (socket) => {
     const id = generateId();
@@ -34,6 +46,15 @@ wss.on('connection', (socket) => {
                 }
             });
         }
+        if (msg.type === 'chat') {
+            const { roomId, message } = msg;
+            let clients = Rooms.get(roomId);
+            clients?.forEach((s) => {
+                if (s !== socket) {
+                    s.send(JSON.stringify({ type: 'chat', userId: id, message }));
+                }
+            });
+        }
     });
     socket.on('close', () => {
         console.log(`user disconnected!  ${id}`);
@@ -45,6 +66,7 @@ wss.on('connection', (socket) => {
                 s.send(JSON.stringify({ type: 'user-left', userId: id }));
             });
         });
+        deleteRoom(socket);
         socketIds.delete(socket);
     });
 });
