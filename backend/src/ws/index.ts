@@ -5,9 +5,12 @@ import * as mediasoup from 'mediasoup'
 import { json } from 'stream/consumers'
 import { isAwaitKeyword } from 'typescript'
 import { SocketAddress } from 'net'
+import { getConsumerRtpParameters } from 'mediasoup/ortc'
 
 let worker: mediasoup.types.Worker | undefined
 let router: mediasoup.types.Router | undefined
+const producersMap: Map<string, mediasoup.types.Producer[]> = new Map()
+const transportsMap: Map<string, mediasoup.types.WebRtcTransport | undefined> = new Map() || undefined;
 
 
 const mediaCodecs: mediasoup.types.RtpCodecCapability[] = [
@@ -44,13 +47,7 @@ async function initMediasoup() {
     console.log(" mediasoup router created");
 }
 
-// ab transport create krna h 
-const transport = await router?.createWebRtcTransport({
-    listenIps: [{ ip: '0.0.0.0', announcedIp: 'my-public-ip' }],
-    enableUdp: true,
-    enableTcp: true,
-    preferTcp: true
-})
+
 
 
 
@@ -88,12 +85,23 @@ export function initws(server: http.Server) {
 
     const wss = new WebSocketServer({ server })
 
-    wss.on('connection', (socket) => {
+    wss.on('connection', async (socket) => {
 
 
         const id = generateId();
 
         socketIds.set(socket, id)
+
+
+        // ab transport create krna h 
+        const transport = await router?.createWebRtcTransport({
+            listenIps: [{ ip: '0.0.0.0', announcedIp: 'my-public-ip' }],
+            enableUdp: true,
+            enableTcp: true,
+            preferTcp: true
+        }) 
+        transportsMap.set(id, transport)
+
 
         socket.on('message', async (data) => {
             console.log("data", data.toString())
@@ -128,6 +136,35 @@ export function initws(server: http.Server) {
                     }
 
                 });
+
+                for (const [otherSocket, otherId] of socketIds) {
+                    if (otherSocket === socket) continue; // skip self
+
+                    const userProducers = producersMap.get(otherId)
+
+                    if (!userProducers) continue;
+
+                    for (const producer of userProducers) {
+                        if (router?.canConsume({ producerId: producer.id, rtpCapabilities: msg.rtpCapabilities })) {
+                            const consumer = await transport?.consume({
+                                producerId: producer.id,
+                                rtpCapabilities: msg.rtpCapabilities,
+                                paused: false
+                            })
+
+                            socket.send(JSON.stringify({
+                                type: 'consumed',
+                                producerId: producer.id,
+                                kind: consumer?.kind,
+                                id: consumer?.id,
+                                rtpParameters: consumer?.rtpParameters
+                            }))
+                        }
+
+
+                    }
+
+                }
             }
 
 
@@ -169,6 +206,13 @@ export function initws(server: http.Server) {
                     kind,
                     rtpParameters      ////  rtpParameters → Browser ne send kiye jo actual media ka format, codecs etc. batate hain
                 })
+                 
+
+                const userProducers = producersMap.get(id) || [];
+                userProducers?.push(producer!)
+
+                producersMap.set(id, userProducers)
+
 
                 socket.send(JSON.stringify({
                     type: 'produced',
@@ -200,7 +244,7 @@ export function initws(server: http.Server) {
                         producerId,
                         id: consumer?.id,
                         kind: consumer?.kind,
-                        rtpParmaters: consumer?.rtpParameters
+                        rtpParamaters: consumer?.rtpParameters
                     }))
                 }
 
