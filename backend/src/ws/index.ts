@@ -3,6 +3,8 @@ import http from 'http'
 
 import * as mediasoup from 'mediasoup'
 import { json } from 'stream/consumers'
+import { isAwaitKeyword } from 'typescript'
+import { SocketAddress } from 'net'
 
 let worker: mediasoup.types.Worker | undefined
 let router: mediasoup.types.Router | undefined
@@ -28,26 +30,26 @@ const mediaCodecs: mediasoup.types.RtpCodecCapability[] = [
 
 async function initMediasoup() {
     //worker ban gya
- worker = await mediasoup.createWorker({
-    rtcMinPort : 40000,
-    rtcMaxPort : 49999
- })
+    worker = await mediasoup.createWorker({
+        rtcMinPort: 40000,
+        rtcMaxPort: 49999
+    })
 
-  console.log("mediasoup worker created");
+    console.log("mediasoup worker created");
 
-  //router ban gya
+    //router ban gya
 
-  router = await worker.createRouter({mediaCodecs})
+    router = await worker.createRouter({ mediaCodecs })
 
-  console.log(" mediasoup router created");
+    console.log(" mediasoup router created");
 }
 
 // ab transport create krna h 
 const transport = await router?.createWebRtcTransport({
-        listenIps : [{  ip : '0.0.0.0' , announcedIp : 'my-public-ip' }],
-        enableUdp : true,
-        enableTcp : true,
-        preferTcp : true
+    listenIps: [{ ip: '0.0.0.0', announcedIp: 'my-public-ip' }],
+    enableUdp: true,
+    enableTcp: true,
+    preferTcp: true
 })
 
 
@@ -145,14 +147,14 @@ export function initws(server: http.Server) {
             //+++++++++++++++webrtc   
             /// connect trnasport for dtls
 
-            if(msg.type == 'connect-transport'){
+            if (msg.type == 'connect-transport') {
                 const dtlsParameters = msg.dtlsParameters;   // dtls prameter browser send krta h isme fingerprint ya certificate hota h for secr==uirty issue
 
                 //  ab is dtlsprameter ko server ke ptransport se connect krt h taki ek secure connection ban sake
-                await transport?.connect({dtlsParameters})
+                await transport?.connect({ dtlsParameters })
 
                 socket.send(JSON.stringify({
-                    type : 'transport-connected'
+                    type: 'transport-connected'
                 }))
 
             }
@@ -160,20 +162,52 @@ export function initws(server: http.Server) {
 
             // ab producer setup hoga
 
-            if(msg.type === 'producer'){
-                const {kind , rtpParameters} = msg;
+            if (msg.type === 'producer') {
+                const { kind, rtpParameters } = msg;
 
-             const producer =    await transport?.produce({
+                const producer = await transport?.produce({
                     kind,
                     rtpParameters      ////  rtpParameters → Browser ne send kiye jo actual media ka format, codecs etc. batate hain
                 })
 
                 socket.send(JSON.stringify({
-                    type : 'produced',
-                    producerId :producer?.id
+                    type: 'produced',
+                    producerId: producer?.id
                 }))
             }
 
+
+            //  ab consumer ka logi  likha h
+
+            // Naye user ko purane producers ka media bhejna
+
+
+            if (msg.type === 'consumer') {
+
+                const { producerId, rtpCapabilities } = msg;
+
+                // chec k router can consume 
+
+                if (router?.canConsume({ producerId, rtpCapabilities })) {
+                    const consumer = await transport?.consume({
+
+                        producerId,
+                        rtpCapabilities,
+                        paused: false
+                    })
+                    socket.send(JSON.stringify({
+                        type: 'consumed',
+                        producerId,
+                        id: consumer?.id,
+                        kind: consumer?.kind,
+                        rtpParmaters: consumer?.rtpParameters
+                    }))
+                }
+
+
+
+
+            }
 
 
 
@@ -200,12 +234,12 @@ export function initws(server: http.Server) {
         //// +++++++++++++++++++++++++web rtc logic from here
 
         socket.send(JSON.stringify({
-            type : 'create-transport',
-            transportOptions : {
-                id : transport?.id,
-                iceCandidates : transport?.iceCandidates,
-                iceParameters : transport?.iceParameters,
-                dtlsParameters : transport?.dtlsParameters
+            type: 'create-transport',
+            transportOptions: {
+                id: transport?.id,
+                iceCandidates: transport?.iceCandidates,
+                iceParameters: transport?.iceParameters,
+                dtlsParameters: transport?.dtlsParameters
             }
         }))
 
