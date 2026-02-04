@@ -10,7 +10,7 @@ import { getConsumerRtpParameters } from 'mediasoup/ortc'
 let worker: mediasoup.types.Worker | undefined
 let router: mediasoup.types.Router | undefined
 const producersMap: Map<string, mediasoup.types.Producer[]> = new Map()
-const transportsMap: Map<string, mediasoup.types.WebRtcTransport | undefined> = new Map() || undefined;
+const transportsMap: Map<string, mediasoup.types.WebRtcTransport> = new Map()
 
 
 const mediaCodecs: mediasoup.types.RtpCodecCapability[] = [
@@ -43,6 +43,8 @@ async function initMediasoup() {
     //router ban gya
 
     router = await worker.createRouter({ mediaCodecs })
+
+
 
     console.log(" mediasoup router created");
 }
@@ -93,13 +95,16 @@ export function initws(server: http.Server) {
         socketIds.set(socket, id)
 
 
+
+        if (!router) throw new Error("Router not initialized");
+
         // ab transport create krna h 
         const transport = await router?.createWebRtcTransport({
             listenIps: [{ ip: '0.0.0.0', announcedIp: 'my-public-ip' }],
             enableUdp: true,
             enableTcp: true,
             preferTcp: true
-        }) 
+        })
         transportsMap.set(id, transport)
 
 
@@ -142,11 +147,14 @@ export function initws(server: http.Server) {
 
                     const userProducers = producersMap.get(otherId)
 
+                    const otherTransport = transportsMap.get(otherId);
+                    if (!otherTransport) continue;
+
                     if (!userProducers) continue;
 
                     for (const producer of userProducers) {
                         if (router?.canConsume({ producerId: producer.id, rtpCapabilities: msg.rtpCapabilities })) {
-                            const consumer = await transport?.consume({
+                            const consumer = await otherTransport?.consume({
                                 producerId: producer.id,
                                 rtpCapabilities: msg.rtpCapabilities,
                                 paused: false
@@ -206,7 +214,7 @@ export function initws(server: http.Server) {
                     kind,
                     rtpParameters      ////  rtpParameters → Browser ne send kiye jo actual media ka format, codecs etc. batate hain
                 })
-                 
+
 
                 const userProducers = producersMap.get(id) || [];
                 userProducers?.push(producer!)
@@ -244,7 +252,7 @@ export function initws(server: http.Server) {
                         producerId,
                         id: consumer?.id,
                         kind: consumer?.kind,
-                        rtpParamaters: consumer?.rtpParameters
+                        rtpParameters: consumer?.rtpParameters
                     }))
                 }
 
@@ -260,6 +268,10 @@ export function initws(server: http.Server) {
         socket.on('close', () => {
             console.log(`user disconnected!  ${id}`)
 
+            producersMap.delete(id)
+            transportsMap.delete(id)
+  
+            
             Rooms.forEach((clients, roomId) => {
                 if (clients.has(socket)) {
                     clients.delete(socket)
