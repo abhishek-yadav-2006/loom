@@ -1,1 +1,1 @@
-{"root":["./src/index.ts"],"version":"5.9.3"}
+{"root":["./src/app.ts","./src/server.ts","./src/mediasoup/index.ts","./src/ws/index.ts"],"version":"5.9.3"}

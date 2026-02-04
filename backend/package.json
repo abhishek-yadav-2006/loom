@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "tsc -b && node ./dist/index.js"
+    "dev": "tsc -b && node ./dist/server.js"
   },
   "keywords": [],
   "author": "",
@@ -14,6 +14,7 @@
     "@types/express": "^5.0.6",
     "@types/ws": "^8.18.1",
     "express": "^5.2.1",
+    "mediasoup": "^3.19.16",
     "typescript": "^5.9.3",
     "ws": "^8.19.0"
   }
