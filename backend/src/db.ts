@@ -1,14 +1,14 @@
 import  mongoose, { mongo, Mongoose , Schema } from "mongoose";
-import { email, string } from "zod";
+
 
 const userSchema = new mongoose.Schema({
     username : {
-        type  : string,
+        type  : String,
         unique : true
     },
 
-    email : string,
-    password: string
+    email : String,
+    password: String
 })
 
 
