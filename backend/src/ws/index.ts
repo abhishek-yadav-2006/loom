@@ -10,7 +10,7 @@ import { getConsumerRtpParameters } from 'mediasoup/ortc'
 let worker: mediasoup.types.Worker | undefined
 let router: mediasoup.types.Router | undefined
 const producersMap: Map<string, mediasoup.types.Producer[]> = new Map()
-const transportsMap: Map<string, mediasoup.types.WebRtcTransport> = new Map()
+const transportsMap: Map<string, mediasoup.types.WebRtcTransport | undefined> = new Map()
 
 
 const mediaCodecs: mediasoup.types.RtpCodecCapability[] = [
@@ -96,7 +96,7 @@ export function initws(server: http.Server) {
 
 
 
-        if (!router) throw new Error("Router not initialized");
+        // if (!router) throw new Error("Router not initialized");
 
         // ab transport create krna h 
         const transport = await router?.createWebRtcTransport({
@@ -105,6 +105,7 @@ export function initws(server: http.Server) {
             enableTcp: true,
             preferTcp: true
         })
+        console.log(transport)
         transportsMap.set(id, transport)
 
 
