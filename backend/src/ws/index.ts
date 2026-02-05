@@ -229,7 +229,7 @@ export function initws(server: http.Server) {
             }
 
 
-            //  ab consumer ka logi  likha h
+            //  ab consumer ka logic  likha h
 
             // Naye user ko purane producers ka media bhejna
 
