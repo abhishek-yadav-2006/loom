@@ -3,7 +3,9 @@ import * as mediasoup from 'mediasoup';
 let worker;
 let router;
 const producersMap = new Map();
-const transportsMap = new Map();
+// const transportsMap: Map<string, mediasoup.types.WebRtcTransport | undefined> = new Map()
+const sendTransportsMap = new Map();
+const recvTransportsMap = new Map();
 const mediaCodecs = [
     {
         kind: "audio",
@@ -56,14 +58,28 @@ export function initws(server) {
         socketIds.set(socket, id);
         // if (!router) throw new Error("Router not initialized");
         // ab transport create krna h 
-        const transport = await router?.createWebRtcTransport({
+        // const transport = await router?.createWebRtcTransport({
+        //     listenIps: [{ ip: '0.0.0.0', announcedIp: 'my-public-ip' }],
+        //     enableUdp: true,
+        //     enableTcp: true,
+        //     preferTcp: true
+        // })
+        // console.log(transport)
+        // transportsMap.set(id, transport)
+        const sendTransport = await router?.createWebRtcTransport({
             listenIps: [{ ip: '0.0.0.0', announcedIp: 'my-public-ip' }],
             enableUdp: true,
             enableTcp: true,
             preferTcp: true
         });
-        console.log(transport);
-        transportsMap.set(id, transport);
+        const recvTransport = await router?.createWebRtcTransport({
+            listenIps: [{ ip: '0.0.0.0', announcedIp: 'my-public-ip' }],
+            enableUdp: true,
+            enableTcp: true,
+            preferTcp: true
+        });
+        sendTransportsMap.set(id, sendTransport);
+        recvTransportsMap.set(id, recvTransport);
         socket.on('message', async (data) => {
             console.log("data", data.toString());
             let msg = JSON.parse(data.toString());
@@ -91,7 +107,7 @@ export function initws(server) {
                     if (otherSocket === socket)
                         continue; // skip self
                     const userProducers = producersMap.get(otherId);
-                    const otherTransport = transportsMap.get(otherId);
+                    const otherTransport = recvTransportsMap.get(otherId);
                     if (!otherTransport)
                         continue;
                     if (!userProducers)
@@ -127,7 +143,9 @@ export function initws(server) {
             /// connect trnasport for dtls
             if (msg.type == 'connect-transport') {
                 const dtlsParameters = msg.dtlsParameters; // dtls prameter browser send krta h isme fingerprint ya certificate hota h for secr==uirty issue
+                const direction = msg.direction;
                 //  ab is dtlsprameter ko server ke ptransport se connect krt h taki ek secure connection ban sake
+                const transport = direction === 'send' ? sendTransportsMap.get(id) : recvTransportsMap.get(id);
                 await transport?.connect({ dtlsParameters });
                 socket.send(JSON.stringify({
                     type: 'transport-connected'
@@ -136,7 +154,7 @@ export function initws(server) {
             // ab producer setup hoga
             if (msg.type === 'producer') {
                 const { kind, rtpParameters } = msg;
-                const producer = await transport?.produce({
+                const producer = await sendTransport?.produce({
                     kind,
                     rtpParameters ////  rtpParameters → Browser ne send kiye jo actual media ka format, codecs etc. batate hain
                 });
@@ -154,7 +172,7 @@ export function initws(server) {
                 const { producerId, rtpCapabilities } = msg;
                 // chec k router can consume 
                 if (router?.canConsume({ producerId, rtpCapabilities })) {
-                    const consumer = await transport?.consume({
+                    const consumer = await recvTransport?.consume({
                         producerId,
                         rtpCapabilities,
                         paused: false
@@ -172,7 +190,8 @@ export function initws(server) {
         socket.on('close', () => {
             console.log(`user disconnected!  ${id}`);
             producersMap.delete(id);
-            transportsMap.delete(id);
+            sendTransportsMap.delete(id);
+            recvTransportsMap.delete(id);
             Rooms.forEach((clients, roomId) => {
                 if (clients.has(socket)) {
                     clients.delete(socket);
@@ -187,11 +206,17 @@ export function initws(server) {
         //// +++++++++++++++++++++++++web rtc logic from here
         socket.send(JSON.stringify({
             type: 'create-transport',
-            transportOptions: {
-                id: transport?.id,
-                iceCandidates: transport?.iceCandidates,
-                iceParameters: transport?.iceParameters,
-                dtlsParameters: transport?.dtlsParameters
+            sendTransport: {
+                id: sendTransport?.id,
+                iceCandidates: sendTransport?.iceCandidates,
+                iceParameters: sendTransport?.iceParameters,
+                dtlsParameters: sendTransport?.dtlsParameters
+            },
+            recvTransport: {
+                id: recvTransport?.id,
+                iceCandidates: recvTransport?.iceCandidates,
+                iceParameters: recvTransport?.iceParameters,
+                dtlsParameters: recvTransport?.dtlsParameters
             }
         }));
     });

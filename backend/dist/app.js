@@ -106,13 +106,40 @@ app.post('/api/v1/meeting/create', authMiddleware, async (req, res) => {
         });
         console.log(newmeeting);
         return res.status(200).json({
-            message: "meeting created succesfully!"
+            message: "meeting created succesfully!",
+            meetingId
         });
     }
     catch (e) {
         console.log("err while creating meeting", e);
         return res.json({
             message: "err in creating a meeting"
+        });
+    }
+});
+app.post("/api/v1/meeting/join", authMiddleware, async (req, res) => {
+    try {
+        const { meetingId } = req.body;
+        if (!meetingId) {
+            return res.status(400).json({
+                message: "meetingId is required"
+            });
+        }
+        const isMeetingExist = await Meeting.find({ meetingId });
+        if (!isMeetingExist) {
+            return res.status(400).json({
+                message: "meeting not exist"
+            });
+        }
+        res.status(200).json({
+            message: "Joined meeting successfully",
+            meetingId
+        });
+    }
+    catch (e) {
+        console.log('err while joining', e);
+        return res.json({
+            message: "err while joining the meeting"
         });
     }
 });
