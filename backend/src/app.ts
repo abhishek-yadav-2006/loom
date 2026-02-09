@@ -150,7 +150,8 @@ app.post('/api/v1/meeting/create', authMiddleware, async (req, res) => {
     console.log(newmeeting)
 
     return res.status(200).json({
-      message: "meeting created succesfully!"
+      message: "meeting created succesfully!",
+      meetingId
     })
 
   } catch (e) {
@@ -161,6 +162,9 @@ app.post('/api/v1/meeting/create', authMiddleware, async (req, res) => {
   }
 
 })
+
+
+
 
 
 
