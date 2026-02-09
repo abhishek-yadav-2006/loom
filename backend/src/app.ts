@@ -9,13 +9,17 @@ import jwt from 'jsonwebtoken'
 import { jwt_password } from './config.js';
 import { authMiddleware } from './middleware.js';
 import { Meeting } from './models/meeting.js';
+import cors from 'cors'
 
 
 const app = express();
 
 app.use(express.json());
 
-
+app.use(cors({
+  origin: "*",
+  credentials: true
+}));
 
 const dburl = process.env.DB_URL ?? " "
 
