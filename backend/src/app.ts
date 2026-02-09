@@ -3,10 +3,9 @@ dotenv.config()
 import express from "express";
 import mongoose from "mongoose";
 import z from 'zod'
-import { userModel } from './db.js';
+import { userModel } from './models/user.js';
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
-import { id } from 'zod/locales';
 import { jwt_password } from './config.js';
 
 
