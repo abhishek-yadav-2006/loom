@@ -7,6 +7,8 @@ import { userModel } from './models/user.js';
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import { jwt_password } from './config.js';
+import { authMiddleware } from './middleware.js';
+import { Meeting } from './models/meeting.js';
 
 
 const app = express();
@@ -92,10 +94,10 @@ app.post("/api/v1/signup", async (req, res) => {
 app.post("/api/v1/signin", async (req, res) => {
 
 
-  
+
   try {
 
-    const {username , password}  = req.body;
+    const { username, password } = req.body;
     const user = await userModel.findOne({ username });
 
     if (!user || !user.password) {
@@ -108,17 +110,17 @@ app.post("/api/v1/signin", async (req, res) => {
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
     console.log(isPasswordCorrect)
 
-    if(isPasswordCorrect){
+    if (isPasswordCorrect) {
 
-      const token =  jwt.sign({id : user.id } , jwt_password)
+      const token = jwt.sign({ id: user.id }, jwt_password)
       res.json({
         message: "user succesfully logged in ",
         token
       })
-      
-    }else{
+
+    } else {
       res.json({
-        mesage : "Incorrect Credentials!"
+        mesage: "Incorrect Credentials!"
       })
     }
 
@@ -126,6 +128,35 @@ app.post("/api/v1/signin", async (req, res) => {
   } catch (e) {
     res.json({
       message: "err while log in "
+    })
+  }
+
+})
+
+app.post('/api/v1/meeting/create', authMiddleware, async (req, res) => {
+
+  try {
+
+    const meetingId = (Math.floor(10000 * Math.random() * 90000)).toString();
+
+    //@ts-ignore
+    const hostId = req.userId;
+
+    const newmeeting = await Meeting.create({
+      meetingId,
+      hostId
+    })
+
+    console.log(newmeeting)
+
+    return res.status(200).json({
+      message: "meeting created succesfully!"
+    })
+
+  } catch (e) {
+    console.log("err while creating meeting", e);
+    return res.json({
+      message: "err in creating a meeting"
     })
   }
 

@@ -5,11 +5,10 @@ const meetingSchema = new mongoose.Schema({
         type : String,
         unique : true
     } ,
-    host : {
+    hostId : {
         type : mongoose.Schema.Types.ObjectId,
         ref : 'User'
     }
 })
 
-const Meeting = mongoose.model('Meeting' , meetingSchema);
-module.exports = Meeting;
+export const Meeting = mongoose.model('Meeting' , meetingSchema);

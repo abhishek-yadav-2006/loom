@@ -1,13 +1,14 @@
-import dotenv, { parse } from 'dotenv';
+import dotenv from 'dotenv';
 dotenv.config();
 import express from "express";
 import mongoose from "mongoose";
 import z from 'zod';
-import { userModel } from './db.js';
+import { userModel } from './models/user.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { id } from 'zod/locales';
 import { jwt_password } from './config.js';
+import { authMiddleware } from './middleware.js';
+import { Meeting } from './models/meeting.js';
 const app = express();
 app.use(express.json());
 const dburl = process.env.DB_URL ?? " ";
@@ -91,6 +92,27 @@ app.post("/api/v1/signin", async (req, res) => {
     catch (e) {
         res.json({
             message: "err while log in "
+        });
+    }
+});
+app.post('/api/v1/meeting/create', authMiddleware, async (req, res) => {
+    try {
+        const meetingId = (Math.floor(10000 * Math.random() * 90000)).toString();
+        //@ts-ignore
+        const hostId = req.userId;
+        const newmeeting = await Meeting.create({
+            meetingId,
+            hostId
+        });
+        console.log(newmeeting);
+        return res.status(200).json({
+            message: "meeting created succesfully!"
+        });
+    }
+    catch (e) {
+        console.log("err while creating meeting", e);
+        return res.json({
+            message: "err in creating a meeting"
         });
     }
 });

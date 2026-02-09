@@ -1,10 +1,5 @@
-import { WebSocket, WebSocketServer } from 'ws';
-import http from 'http';
+import { WebSocketServer } from 'ws';
 import * as mediasoup from 'mediasoup';
-import { json } from 'stream/consumers';
-import { isAwaitKeyword } from 'typescript';
-import { SocketAddress } from 'net';
-import { getConsumerRtpParameters } from 'mediasoup/ortc';
 let worker;
 let router;
 const producersMap = new Map();
