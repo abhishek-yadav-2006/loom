@@ -135,7 +135,6 @@ export default function RoomClient({ roomId }: { roomId: string }) {
         }
     }, [])
 
-    // Camera capture + produce hook
     useEffect(() => {
         if (!sendTransportRef.current || !deviceLoadRef.current) return;
 
@@ -144,7 +143,6 @@ export default function RoomClient({ roomId }: { roomId: string }) {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                 const videoTrack = stream.getVideoTracks()[0];
 
-                // produce call
                 const producer = await sendTransportRef.current?.produce({ track: videoTrack });
 
                 console.log("Camera producing, producer id:", producer?.id);
