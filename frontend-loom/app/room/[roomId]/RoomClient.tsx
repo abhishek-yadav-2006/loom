@@ -69,7 +69,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
                         onError(err)
                     }
                 })
-  
+
                 //  recv transport 
                 if (!recvTransportRef.current) {
                     const recvTransportOptions = message.recvTransport
@@ -103,6 +103,30 @@ export default function RoomClient({ roomId }: { roomId: string }) {
                     type: "create-transport"
                 }))
             }
+
+            if (message.type === 'consumed') {
+                const { id, producerId, kind, rtpParameters } = message
+                const recvTransport = recvTransportRef.current
+                if (!recvTransport) return
+
+                const stream = new MediaStream()
+                const consumer = await recvTransport.consume({
+                    id,
+                    producerId,
+                    kind,
+                    rtpParameters
+
+                })
+
+                stream.addTrack(consumer.track)
+
+                const videoEl = document.createElement("video")
+                videoEl.srcObject = stream
+                videoEl.autoplay = true
+                videoEl.playsInline = true
+                document.body.appendChild(videoEl)
+            }
+
 
         }
 
