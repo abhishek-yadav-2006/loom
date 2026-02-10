@@ -69,6 +69,26 @@ export default function RoomClient({ roomId }: { roomId: string }) {
                         onError(err)
                     }
                 })
+  
+                //  recv transport 
+                if (!recvTransportRef.current) {
+                    const recvTransportOptions = message.recvTransport
+                    const recvTransport = recvTransportRef.current = deviceRef.current?.createRecvTransport({
+                        id: recvTransportOptions.id,
+                        iceCandidates: recvTransportOptions.iceCandidates,
+                        iceParameters: recvTransportOptions.iceParameters,
+                        dtlsParameters: recvTransportOptions.dtlsParameters
+                    })
+
+                    recvTransport?.on("connect", ({ dtlsParameters }, onSuccess) => {
+                        socketRef.current?.send(JSON.stringify({
+                            type: "connect-transport",
+                            transportDirection: "recv",
+                            dtlsParameters
+                        }))
+                        onSuccess()
+                    })
+                }
 
             }
 
