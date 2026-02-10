@@ -12,7 +12,10 @@ import { Meeting } from './models/meeting.js';
 import cors from 'cors';
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+    origin: "*",
+    credentials: true
+}));
 const dburl = process.env.DB_URL ?? " ";
 async function main() {
     await mongoose.connect(dburl);
@@ -98,6 +101,7 @@ app.post("/api/v1/signin", async (req, res) => {
     }
 });
 app.post('/api/v1/meeting/create', authMiddleware, async (req, res) => {
+    console.log('hits the en  point');
     try {
         const meetingId = (Math.floor(10000 * Math.random() * 90000)).toString();
         //@ts-ignore
@@ -106,7 +110,7 @@ app.post('/api/v1/meeting/create', authMiddleware, async (req, res) => {
             meetingId,
             hostId
         });
-        console.log(newmeeting);
+        console.log(newmeeting.meetingId);
         return res.status(200).json({
             message: "meeting created succesfully!",
             meetingId

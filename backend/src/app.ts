@@ -138,8 +138,10 @@ app.post("/api/v1/signin", async (req, res) => {
 })
 
 app.post('/api/v1/meeting/create', authMiddleware, async (req, res) => {
+  console.log('hits the en  point')
 
   try {
+    
 
     const meetingId = (Math.floor(10000 * Math.random() * 90000)).toString();
 
@@ -151,7 +153,7 @@ app.post('/api/v1/meeting/create', authMiddleware, async (req, res) => {
       hostId
     })
 
-    console.log(newmeeting)
+    console.log(newmeeting.meetingId)
 
     return res.status(200).json({
       message: "meeting created succesfully!",

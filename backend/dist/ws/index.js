@@ -66,20 +66,6 @@ export function initws(server) {
         // })
         // console.log(transport)
         // transportsMap.set(id, transport)
-        const sendTransport = await router?.createWebRtcTransport({
-            listenIps: [{ ip: '0.0.0.0', announcedIp: 'my-public-ip' }],
-            enableUdp: true,
-            enableTcp: true,
-            preferTcp: true
-        });
-        const recvTransport = await router?.createWebRtcTransport({
-            listenIps: [{ ip: '0.0.0.0', announcedIp: 'my-public-ip' }],
-            enableUdp: true,
-            enableTcp: true,
-            preferTcp: true
-        });
-        sendTransportsMap.set(id, sendTransport);
-        recvTransportsMap.set(id, recvTransport);
         socket.on('message', async (data) => {
             console.log("data", data.toString());
             let msg = JSON.parse(data.toString());
@@ -141,6 +127,37 @@ export function initws(server) {
             }
             //+++++++++++++++webrtc   
             /// connect trnasport for dtls
+            if (msg.type === "create-transport") {
+                const sendTransport = await router.createWebRtcTransport({
+                    listenIps: [{ ip: "0.0.0.0", announcedIp: "my-public-ip" }],
+                    enableUdp: true,
+                    enableTcp: true,
+                    preferTcp: true
+                });
+                const recvTransport = await router.createWebRtcTransport({
+                    listenIps: [{ ip: "0.0.0.0", announcedIp: "my-public-ip" }],
+                    enableUdp: true,
+                    enableTcp: true,
+                    preferTcp: true
+                });
+                sendTransportsMap.set(id, sendTransport);
+                recvTransportsMap.set(id, recvTransport);
+                socket.send(JSON.stringify({
+                    type: "create-transport",
+                    sendTransport: {
+                        id: sendTransport.id,
+                        iceCandidates: sendTransport.iceCandidates,
+                        iceParameters: sendTransport.iceParameters,
+                        dtlsParameters: sendTransport.dtlsParameters
+                    },
+                    recvTransport: {
+                        id: recvTransport.id,
+                        iceCandidates: recvTransport.iceCandidates,
+                        iceParameters: recvTransport.iceParameters,
+                        dtlsParameters: recvTransport.dtlsParameters
+                    }
+                }));
+            }
             if (msg.type == 'connect-transport') {
                 const dtlsParameters = msg.dtlsParameters; // dtls prameter browser send krta h isme fingerprint ya certificate hota h for secr==uirty issue
                 const direction = msg.direction;
@@ -154,6 +171,9 @@ export function initws(server) {
             // ab producer setup hoga
             if (msg.type === 'producer') {
                 const { kind, rtpParameters } = msg;
+                const sendTransport = sendTransportsMap.get(id);
+                if (!sendTransport)
+                    return;
                 const producer = await sendTransport?.produce({
                     kind,
                     rtpParameters ////  rtpParameters → Browser ne send kiye jo actual media ka format, codecs etc. batate hain
@@ -171,6 +191,9 @@ export function initws(server) {
             if (msg.type === 'consumer') {
                 const { producerId, rtpCapabilities } = msg;
                 // chec k router can consume 
+                const recvTransport = recvTransportsMap.get(id);
+                if (!recvTransport)
+                    return;
                 if (router?.canConsume({ producerId, rtpCapabilities })) {
                     const consumer = await recvTransport?.consume({
                         producerId,
@@ -205,19 +228,8 @@ export function initws(server) {
         });
         //// +++++++++++++++++++++++++web rtc logic from here
         socket.send(JSON.stringify({
-            type: 'create-transport',
-            sendTransport: {
-                id: sendTransport?.id,
-                iceCandidates: sendTransport?.iceCandidates,
-                iceParameters: sendTransport?.iceParameters,
-                dtlsParameters: sendTransport?.dtlsParameters
-            },
-            recvTransport: {
-                id: recvTransport?.id,
-                iceCandidates: recvTransport?.iceCandidates,
-                iceParameters: recvTransport?.iceParameters,
-                dtlsParameters: recvTransport?.dtlsParameters
-            }
+            type: "router-rtp-capabilities",
+            rtpCapabilities: router?.rtpCapabilities
         }));
     });
 }
