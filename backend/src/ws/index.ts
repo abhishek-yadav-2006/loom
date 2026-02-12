@@ -146,37 +146,39 @@ export function initws(server: http.Server) {
                     }
 
                 });
+                const currentRecvTransport = recvTransportsMap.get(id)
+                if (!currentRecvTransport) return
 
                 for (const [otherSocket, otherId] of socketIds) {
-                    if (otherSocket === socket) continue; // skip self
+                    if (otherSocket === socket) continue
 
                     const userProducers = producersMap.get(otherId)
-
-                    const otherTransport = recvTransportsMap.get(otherId);
-                    if (!otherTransport) continue;
-
-                    if (!userProducers) continue;
+                    if (!userProducers) continue
 
                     for (const producer of userProducers) {
-                        if (router?.canConsume({ producerId: producer.id, rtpCapabilities: msg.rtpCapabilities })) {
-                            const consumer = await otherTransport?.consume({
+                        if (
+                            router?.canConsume({
+                                producerId: producer.id,
+                                rtpCapabilities: msg.rtpCapabilities
+                            })
+                        ) {
+                            const consumer = await currentRecvTransport.consume({
                                 producerId: producer.id,
                                 rtpCapabilities: msg.rtpCapabilities,
                                 paused: false
                             })
 
-                            socket.send(JSON.stringify({
-                                type: 'consumed',
-                                producerId: producer.id,
-                                kind: consumer?.kind,
-                                id: consumer?.id,
-                                rtpParameters: consumer?.rtpParameters
-                            }))
+                            socket.send(
+                                JSON.stringify({
+                                    type: 'consumed',
+                                    producerId: producer.id,
+                                    id: consumer.id,
+                                    kind: consumer.kind,
+                                    rtpParameters: consumer.rtpParameters
+                                })
+                            )
                         }
-
-
                     }
-
                 }
             }
 
@@ -232,12 +234,12 @@ export function initws(server: http.Server) {
                 }))
             }
 
-
+ 
 
             if (msg.type == 'connect-transport') {
                 const dtlsParameters = msg.dtlsParameters;   // dtls prameter browser send krta h isme fingerprint ya certificate hota h for secr==uirty issue
 
-                const direction = msg.direction;
+                const direction = msg.transportDirection;
 
                 //  ab is dtlsprameter ko server ke ptransport se connect krt h taki ek secure connection ban sake
                 const transport = direction === 'send' ? sendTransportsMap.get(id) : recvTransportsMap.get(id);
@@ -262,6 +264,23 @@ export function initws(server: http.Server) {
                     kind,
                     rtpParameters      ////  rtpParameters → Browser ne send kiye jo actual media ka format, codecs etc. batate hain
                 })
+
+                // Notify other users in same room
+                Rooms.forEach((clients, roomId) => {
+                    if (clients.has(socket)) {
+                        clients.forEach((s: WebSocket) => {
+                            if (s !== socket) {
+                                s.send(
+                                    JSON.stringify({
+                                        type: 'new-producer',
+                                        producerId: producer.id
+                                    })
+                                )
+                            }
+                        })
+                    }
+                })
+
 
 
                 const userProducers = producersMap.get(id) || [];
@@ -289,6 +308,8 @@ export function initws(server: http.Server) {
                 // chec k router can consume 
                 const recvTransport = recvTransportsMap.get(id)
                 if (!recvTransport) return
+                console.log("Creating consumer for:", producerId)
+
 
                 if (router?.canConsume({ producerId, rtpCapabilities })) {
                     const consumer = await recvTransport?.consume({
