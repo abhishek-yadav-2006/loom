@@ -14,6 +14,7 @@
     "@mui/icons-material": "^7.3.7",
     "@mui/material": "^7.3.7",
     "axios": "^1.13.5",
+    "framer-motion": "^12.34.0",
     "mediasoup-client": "^3.18.6",
     "next": "16.1.6",
     "react": "19.2.3",
